@@ -1,0 +1,35 @@
+name: Setup PlatformIO
+description: Install PlatformIO. Requires Python and pip to be available on the runner - run setup-python first.
+
+inputs:
+  pio-version:
+    description: 'The version of PlatformIO to install. Use "latest" for the latest version.'
+    required: false
+    default: "latest"
+  use-cache:
+    description: Cache PlatformIO packages to speed up subsequent runs.
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cache PlatformIO
+      if: ${{ inputs.use-cache == 'true' }}
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: ~/.platformio
+        key: platformio-${{ runner.os }}-${{ hashFiles('**/platformio.ini') }}
+        restore-keys: |
+          platformio-${{ runner.os }}-
+
+    - name: Install PlatformIO
+      shell: bash
+      env:
+        PIO_VERSION: ${{ inputs.pio-version }}
+      run: |
+        if [ "$PIO_VERSION" = "latest" ]; then
+          pip install --upgrade platformio
+        else
+          pip install "platformio==$PIO_VERSION"
+        fi
