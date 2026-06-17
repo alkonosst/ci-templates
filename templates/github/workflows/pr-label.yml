@@ -1,0 +1,16 @@
+# Auto-label each PR from its conventional commit title.
+# Accepted types:
+# - feat/fix/docs/chore/ci/refactor
+# - breaking-change for "type!:" or "type(scope)!:" (scope is optional)
+name: PR label
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  label:
+    uses: alkonosst/templates/.github/workflows/reusable-pr-label.yml@v1
