@@ -33,3 +33,8 @@ runs:
         else
           pip install "platformio==$PIO_VERSION"
         fi
+
+    - name: Verify installation
+      shell: bash
+      run: |
+        pio --version
