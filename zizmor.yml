@@ -1,0 +1,6 @@
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "alkonosst/*": ref-pin
+        "*": hash-pin
