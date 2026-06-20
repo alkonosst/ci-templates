@@ -1,0 +1,108 @@
+# Reusable CI for PlatformIO Arduino/native libraries.
+# Compiles every example (Arduino boards in parallel via matrix, native examples in their own job)
+# and runs the native unit tests across the no-sanitizer, sanitizer and coverage environments.
+# Optionally uploads the coverage report to Codecov.
+name: PlatformIO CI
+
+on:
+  workflow_call:
+    inputs:
+      arduino-envs:
+        description: Space-separated PlatformIO envs to compile Arduino examples (one matrix job per env).
+        required: false
+        type: string
+        default: "esp32-s3-example"
+      native-envs:
+        description: Space-separated PlatformIO envs to compile Native examples.
+        required: false
+        type: string
+        default: "native-example"
+      test-envs:
+        description: >
+          Space-separated PlatformIO envs to run native unit tests. Include the coverage env
+          (e.g. native-cov-test) so Codecov has data to consume.
+        required: false
+        type: string
+        default: "native-test native-san-test native-cov-test"
+      upload-codecov:
+        description: Upload the coverage report to Codecov.
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      codecov-token:
+        description: Codecov token (optional for public repositories).
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      arduino-envs: ${{ steps.matrix.outputs.arduino-envs }}
+    steps:
+      - name: Build Arduino env matrix
+        id: matrix
+        shell: bash
+        env:
+          ARDUINO_ENVS: ${{ inputs.arduino-envs }}
+        run: |
+          # Turn the space-separated env list into a JSON array the matrix can consume.
+          read -ra envs <<< "$ARDUINO_ENVS"
+          json="["
+          for i in "${!envs[@]}"; do
+            [ "$i" -gt 0 ] && json+=","
+            json+="\"${envs[$i]}\""
+          done
+          json+="]"
+          echo "arduino-envs=$json" >> "$GITHUB_OUTPUT"
+
+  examples-arduino:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.arduino-envs != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arduino-env: ${{ fromJSON(needs.prepare.outputs.arduino-envs) }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: alkonosst/templates/.github/actions/setup-python@v1
+      - uses: alkonosst/templates/.github/actions/setup-pio@v1
+      - uses: alkonosst/templates/.github/actions/pio-compile-examples@v1
+        with:
+          arduino-envs: ${{ matrix.arduino-env }}
+          native-envs: ""
+
+  examples-native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: alkonosst/templates/.github/actions/setup-python@v1
+      - uses: alkonosst/templates/.github/actions/setup-pio@v1
+      - uses: alkonosst/templates/.github/actions/pio-compile-examples@v1
+        with:
+          arduino-envs: ""
+          native-envs: ${{ inputs.native-envs }}
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: alkonosst/templates/.github/actions/setup-python@v1
+      - uses: alkonosst/templates/.github/actions/setup-pio@v1
+      - uses: alkonosst/templates/.github/actions/pio-native-tests@v1
+        with:
+          envs: ${{ inputs.test-envs }}
+      - uses: alkonosst/templates/.github/actions/coverage@v1
+        with:
+          upload-codecov: ${{ inputs.upload-codecov }}
+          codecov-token: ${{ secrets.codecov-token }}
