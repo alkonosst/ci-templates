@@ -42,13 +42,13 @@ runs:
           echo "::group::Running tests for environment: $env"
           if ! pio test -e "$env"; then
             echo "::endgroup::"
-            rows+=("| \`$env\` | FAILED |")
+            rows+=("| \`$env\` | ❌ |")
             write_summary
             echo "::error::Tests failed for environment: $env"
             exit 1
           fi
           echo "::endgroup::"
-          rows+=("| \`$env\` | passed |")
+          rows+=("| \`$env\` | ✅ |")
         done
 
         write_summary

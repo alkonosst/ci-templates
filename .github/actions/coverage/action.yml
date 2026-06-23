@@ -59,7 +59,7 @@ runs:
         if ! summary="$(gcovr "${args[@]}" 2>&1)"; then
           echo "$summary"
           {
-            echo "### Coverage (failed)"
+            echo "### ❌ Coverage"
             echo ""
             echo '```'
             echo "$summary" | grep -E '^(lines|functions|branches):' || true
@@ -71,7 +71,7 @@ runs:
         echo "$summary"
 
         {
-          echo "### Coverage"
+          echo "### ✅ Coverage"
           echo ""
           echo '```'
           echo "$summary" | grep -E '^(lines|functions|branches):' || echo "$summary"

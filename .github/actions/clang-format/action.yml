@@ -53,12 +53,16 @@ runs:
 
         if [ ${#bad[@]} -eq 0 ]; then
           echo "All ${#files[@]} file(s) are correctly formatted."
-          echo "All ${#files[@]} file(s) are correctly formatted (clang-format $CF_VERSION)." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### ✅ Clang-format"
+            echo ""
+            echo "All ${#files[@]} file(s) are correctly formatted (clang-format $CF_VERSION)."
+          } >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
 
         {
-          echo "### Clang-format check failed"
+          echo "### ❌ Clang-format check failed"
           echo ""
           echo "${#bad[@]} of ${#files[@]} file(s) are not formatted (clang-format $CF_VERSION). Run \`clang-format -i\` on:"
           echo ""

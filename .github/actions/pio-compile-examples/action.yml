@@ -99,13 +99,13 @@ runs:
           echo "::group::Compiling $type example: $example (env: $env)"
           if ! pio ci -l "$LIB_PATH" -c "$PROJECT_CONF" -e "$env" "$example"; then
             echo "::endgroup::"
-            rows+=("| \`$example\` | $type | \`$env\` | FAILED |")
+            rows+=("| \`$example\` | $type | \`$env\` | ❌ |")
             write_summary
             echo "::error::Failed to compile $type example: $example (env: $env)"
             exit 1
           fi
           echo "::endgroup::"
-          rows+=("| \`$example\` | $type | \`$env\` | OK |")
+          rows+=("| \`$example\` | $type | \`$env\` | ✅ |")
           count=$((count + 1))
         }
 
