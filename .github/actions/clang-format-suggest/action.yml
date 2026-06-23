@@ -1,0 +1,60 @@
+name: Clang-format suggestions
+description: >
+  Post clang-format fixes as inline pull request suggestions via reviewdog. On same-repo PRs
+  contributors get one-click "Commit suggestion" buttons; on fork PRs reviewdog gracefully degrades
+  to inline annotations. Non-blocking - pair it with the clang-format check as the gate. Requires
+  Python and pip (run setup-python first) and a pull_request event.
+
+inputs:
+  version:
+    description: clang-format version to install. Must match the project's local version.
+    required: false
+    default: "17.0.6"
+  paths:
+    description: Space-separated git pathspecs of files to format.
+    required: false
+    default: "*.c *.cc *.cpp *.cxx *.h *.hpp *.ino"
+  github-token:
+    description: Token reviewdog uses to post review comments (needs pull-requests write on same-repo PRs).
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install clang-format
+      shell: bash
+      env:
+        CF_VERSION: ${{ inputs.version }}
+      run: |
+        if ! pip install "clang-format==$CF_VERSION"; then
+          echo "::error::Failed to install clang-format==$CF_VERSION."
+          exit 1
+        fi
+        clang-format --version
+
+    - name: Setup reviewdog
+      uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
+
+    - name: Post format suggestions
+      shell: bash
+      env:
+        PATHS: ${{ inputs.paths }}
+        REVIEWDOG_GITHUB_API_TOKEN: ${{ inputs.github-token }}
+      run: |
+        # Reformat in place so "git diff" holds the full set of fixes, then let reviewdog turn that
+        # diff into review suggestions. Nothing is committed - only the diff is read.
+        read -ra patterns <<< "$PATHS"
+        mapfile -t files < <(git ls-files -- "${patterns[@]}")
+        if [ ${#files[@]} -eq 0 ]; then
+          echo "No C/C++ files to check."
+          exit 0
+        fi
+        clang-format -i "${files[@]}"
+        git diff | reviewdog \
+          -f=diff \
+          -f.diff.strip=1 \
+          -name=clang-format \
+          -reporter=github-pr-review \
+          -filter-mode=file \
+          -level=warning

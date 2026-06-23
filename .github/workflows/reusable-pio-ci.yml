@@ -38,6 +38,31 @@ permissions:
   contents: read
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: alkonosst/templates/.github/actions/setup-python@v1
+      - uses: alkonosst/templates/.github/actions/clang-format@v1
+
+  # Best-effort inline suggestions on PRs (one-click fix on same-repo PRs, annotations on forks).
+  # Non-blocking: the "format" job above is the gate.
+  format-suggest:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: alkonosst/templates/.github/actions/setup-python@v1
+      - uses: alkonosst/templates/.github/actions/clang-format-suggest@v1
+
   prepare:
     runs-on: ubuntu-latest
     outputs:

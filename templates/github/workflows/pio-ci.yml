@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write # allows the format-suggest job to post review suggestions
 
 jobs:
   ci:

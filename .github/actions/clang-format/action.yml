@@ -1,0 +1,71 @@
+name: Clang-format check
+description: >
+  Check C/C++ formatting with a pinned clang-format version. Fails if any tracked
+  source file is not formatted. Requires Python and pip - run setup-python first.
+
+inputs:
+  version:
+    description: >
+      clang-format version to install. Must match the version used locally (format output
+      changes between major versions), otherwise correctly-formatted code is flagged.
+    required: false
+    default: "17.0.6"
+  paths:
+    description: Space-separated git pathspecs of files to check.
+    required: false
+    default: "*.c *.cc *.cpp *.cxx *.h *.hpp *.ino"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install clang-format
+      shell: bash
+      env:
+        CF_VERSION: ${{ inputs.version }}
+      run: |
+        if ! pip install "clang-format==$CF_VERSION"; then
+          echo "::error::Failed to install clang-format==$CF_VERSION."
+          exit 1
+        fi
+        clang-format --version
+
+    - name: Check formatting
+      shell: bash
+      env:
+        PATHS: ${{ inputs.paths }}
+        CF_VERSION: ${{ inputs.version }}
+      run: |
+        # Only tracked files are checked, so gitignored build dirs (.pio, build, ...) are skipped.
+        read -ra patterns <<< "$PATHS"
+        mapfile -t files < <(git ls-files -- "${patterns[@]}")
+        if [ ${#files[@]} -eq 0 ]; then
+          echo "No C/C++ files to check."
+          exit 0
+        fi
+
+        # Check each file so the run summary can list exactly which ones need formatting.
+        bad=()
+        for file in "${files[@]}"; do
+          if ! clang-format --dry-run --Werror "$file"; then
+            bad+=("$file")
+          fi
+        done
+
+        if [ ${#bad[@]} -eq 0 ]; then
+          echo "All ${#files[@]} file(s) are correctly formatted."
+          echo "All ${#files[@]} file(s) are correctly formatted (clang-format $CF_VERSION)." >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+
+        {
+          echo "### Clang-format check failed"
+          echo ""
+          echo "${#bad[@]} of ${#files[@]} file(s) are not formatted (clang-format $CF_VERSION). Run \`clang-format -i\` on:"
+          echo ""
+          for file in "${bad[@]}"; do
+            echo "- \`$file\`"
+          done
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        echo "::error::Code is not clang-formatted (${#bad[@]} file(s)). Run clang-format (v$CF_VERSION) and commit the result."
+        exit 1
