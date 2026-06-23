@@ -4,8 +4,11 @@
 # - breaking-change for "type!:" or "type(scope)!:" (scope is optional)
 name: PR label
 
+# pull_request_target (not pull_request) so the job also gets a write token on PRs from forks.
+# Safe here: the labeler only reads the PR title from the event payload and never checks out the
+# fork's code.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, edited]
 
 permissions:
