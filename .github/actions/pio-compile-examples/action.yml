@@ -77,6 +77,7 @@ runs:
         read -ra native_envs <<< "$NATIVE_ENVS"
 
         count=0
+        failures=0
         rows=()
 
         write_summary() {
@@ -94,19 +95,21 @@ runs:
 
         # "pio ci" copies the example into a temporary project (so .ino sketches are compiled
         # correctly), links the library from -l, and builds it with the -e environment from -c.
+        # Failures are recorded but do not stop the loop, so every example/env is attempted and the
+        # summary reports the full list. The step fails at the end if any build failed.
         compile_example() {
           local example="$1" env="$2" type="$3"
           echo "::group::Compiling $type example: $example (env: $env)"
-          if ! pio ci -l "$LIB_PATH" -c "$PROJECT_CONF" -e "$env" "$example"; then
+          if pio ci -l "$LIB_PATH" -c "$PROJECT_CONF" -e "$env" "$example"; then
+            echo "::endgroup::"
+            rows+=("| \`$example\` | $type | \`$env\` | ✅ |")
+            count=$((count + 1))
+          else
             echo "::endgroup::"
             rows+=("| \`$example\` | $type | \`$env\` | ❌ |")
-            write_summary
+            failures=$((failures + 1))
             echo "::error::Failed to compile $type example: $example (env: $env)"
-            exit 1
           fi
-          echo "::endgroup::"
-          rows+=("| \`$example\` | $type | \`$env\` | ✅ |")
-          count=$((count + 1))
         }
 
         # An empty env list skips that example type (the loop body simply never runs).
@@ -124,3 +127,7 @@ runs:
 
         write_summary
         echo "Successfully compiled $count example build(s)."
+        if [ "$failures" -gt 0 ]; then
+          echo "::error::$failures example build(s) failed - see the summary above."
+          exit 1
+        fi
