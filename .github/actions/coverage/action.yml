@@ -50,7 +50,7 @@ runs:
         XML_OUTPUT: ${{ inputs.xml-output }}
         FAIL_UNDER: ${{ inputs.fail-under-line }}
       run: |
-        args=(--root . --filter "$FILTER" --xml "$XML_OUTPUT" --print-summary "$SEARCH_PATH")
+        args=(--root . --filter "$FILTER" --exclude-unreachable-branches --exclude-throw-branches --xml "$XML_OUTPUT" --print-summary "$SEARCH_PATH")
         if [ -n "$FAIL_UNDER" ]; then
           args+=(--fail-under-line "$FAIL_UNDER")
         fi
